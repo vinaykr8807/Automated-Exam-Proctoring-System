@@ -299,19 +299,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **FastAPI** community for the amazing web framework
 - **React** team for the powerful frontend library
 
-## 📞 Support
-
-For support, email support@exameye.com or join our [Discord community](https://discord.gg/exameye).
-
-## 🗺️ Roadmap
-
-- [ ] **Mobile App Support** - Native iOS and Android applications
-- [ ] **Advanced Analytics** - ML-powered behavior analysis
-- [ ] **Multi-language Support** - Internationalization
-- [ ] **Cloud Deployment** - One-click cloud deployment
-- [ ] **API Rate Limiting** - Enhanced security features
-- [ ] **Audit Logging** - Comprehensive activity logs
-
 ---
 
 <div align="center">
