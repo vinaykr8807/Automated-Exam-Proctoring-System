@@ -291,6 +291,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 👥 Authors
 
 - **Vinay Kumar** - *Lead Developer* - [@vinaykr8807](https://github.com/vinaykr8807)
+- **Shubham Aggarwal** - *Contributor* - [@shubhamaggarwal1904](https://github.com/shubhamaggarwal1904)
 
 ## 🙏 Acknowledgments
 
