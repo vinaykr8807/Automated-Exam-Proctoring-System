@@ -86,7 +86,7 @@ ExamEye Shield is a comprehensive automated exam proctoring solution that levera
    ```env
    SUPABASE_URL=your_supabase_url
    SUPABASE_KEY=your_supabase_key
-   ADMIN_PASSWORD=vinay
+   ADMIN_PASSWORD=your_admin_password
    ```
    
    Create `frontend/.env`:
@@ -107,7 +107,7 @@ ExamEye Shield is a comprehensive automated exam proctoring solution that levera
 
 6. **Access the Application**
    - **Student Portal**: http://localhost:3000
-   - **Admin Dashboard**: http://localhost:3000/admin/login (Password: `vinay`)
+   - **Admin Dashboard**: http://localhost:3000/admin/login
 
 ## 🎓 User Journey
 
