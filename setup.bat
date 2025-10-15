@@ -33,11 +33,9 @@ cd ..
 
 if not exist backend\.env (
     echo Creating backend/.env file...
-    echo MONGO_URL=mongodb://localhost:27017/exam_proctoring > backend\.env
-    echo DB_NAME=exam_proctoring >> backend\.env
-    echo ADMIN_PASSWORD=vinay >> backend\.env
-    echo SUPABASE_URL=https://ukwnvvuqmiqrjlghgxnf.supabase.co >> backend\.env
+    echo SUPABASE_URL=https://ukwnvvuqmiqrjlghgxnf.supabase.co > backend\.env
     echo SUPABASE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVrd252dnVxbWlxcmpsZ2hneG5mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ1NTU3NzUsImV4cCI6MjA2MDEzMTc3NX0.3VHYXmGdUAU0IW8vGZlvklvOY1kqXAOpBCxwSzL33TM >> backend\.env
+    echo ADMIN_PASSWORD=vinay >> backend\.env
 )
 
 if not exist frontend\.env (
@@ -51,7 +49,7 @@ echo.
 echo ========================================
 echo Next Steps:
 echo ========================================
-echo 1. Start MongoDB (if using local installation)
+echo 1. Update Supabase credentials in backend/.env
 echo 2. Run: start_backend.bat
 echo 3. Run: start_frontend.bat
 echo 4. Open: http://localhost:3000

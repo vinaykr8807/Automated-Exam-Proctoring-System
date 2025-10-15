@@ -3,7 +3,7 @@
 [![Python](https://img.shields.io/badge/Python-3.9+-blue.svg)](https://python.org)
 [![React](https://img.shields.io/badge/React-18.3+-61DAFB.svg)](https://reactjs.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-009688.svg)](https://fastapi.tiangolo.com)
-[![MongoDB](https://img.shields.io/badge/MongoDB-4.4+-47A248.svg)](https://mongodb.com)
+[![Supabase](https://img.shields.io/badge/Supabase-3ECF8E.svg)](https://supabase.com)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 > **Advanced AI-powered exam proctoring system with real-time violation detection using MediaPipe and YOLOv8n**
@@ -26,7 +26,7 @@ ExamEye Shield is a comprehensive automated exam proctoring solution that levera
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 │   Frontend      │    │    Backend      │    │   Database      │
-│   (React TS)    │◄──►│   (FastAPI)     │◄──►│   (MongoDB)     │
+│   (React TS)    │◄──►│   (FastAPI)     │◄──►│   (Supabase)    │
 │                 │    │                 │    │                 │
 │ • Student Portal│    │ • AI Processing │    │ • Sessions      │
 │ • Admin Dashboard│   │ • WebSocket     │    │ • Violations    │
@@ -48,7 +48,7 @@ ExamEye Shield is a comprehensive automated exam proctoring solution that levera
 
 - **Python 3.9+** with pip
 - **Node.js 16+** with npm
-- **MongoDB** (local or Atlas)
+- **Supabase Account** (free tier available)
 - **Git**
 
 ### Installation
@@ -84,11 +84,9 @@ ExamEye Shield is a comprehensive automated exam proctoring solution that levera
    
    Create `backend/.env`:
    ```env
-   MONGO_URL=mongodb://localhost:27017/exam_proctoring
-   DB_NAME=exam_proctoring
-   ADMIN_PASSWORD=vinay
    SUPABASE_URL=your_supabase_url
    SUPABASE_KEY=your_supabase_key
+   ADMIN_PASSWORD=vinay
    ```
    
    Create `frontend/.env`:
@@ -172,12 +170,11 @@ ExamEye Shield is a comprehensive automated exam proctoring solution that levera
 
 ### Backend
 - **FastAPI** - High-performance Python web framework
-- **MongoDB** - Document database for flexible data storage
+- **Supabase** - PostgreSQL database with real-time features
 - **MediaPipe** - Google's ML framework for face detection
 - **YOLOv8n** - State-of-the-art object detection model
 - **OpenCV** - Computer vision library
 - **WebSockets** - Real-time bidirectional communication
-- **Supabase** - Cloud storage for violation snapshots
 
 ### Frontend
 - **React 18** - Modern JavaScript library
@@ -214,38 +211,35 @@ ExamEye-Shield/
 
 ## 🔧 Configuration
 
-### MongoDB Setup
+### Supabase Setup
 
-**Local MongoDB:**
-```env
-MONGO_URL=mongodb://localhost:27017/exam_proctoring
-```
+1. **Create Supabase Account:**
+   - Go to [supabase.com](https://supabase.com) and create free account
+   - Create new project
 
-**MongoDB Atlas (Recommended):**
-```env
-MONGO_URL=mongodb+srv://username:password@cluster.mongodb.net/exam_proctoring
-```
+2. **Get Credentials:**
+   ```env
+   SUPABASE_URL=https://your-project.supabase.co
+   SUPABASE_KEY=your-anon-key
+   ```
 
-### Supabase Configuration (Optional)
-
-For violation snapshot storage:
-1. Create account at [supabase.com](https://supabase.com)
-2. Create new project
-3. Get URL and API key from project settings
-4. Update environment variables
+3. **Database Tables:**
+   - Tables are auto-created by the application
+   - Includes: students, exam_sessions, violations
+   - Real-time subscriptions enabled
 
 ## 📈 Performance Metrics
 
 - **Concurrent Users**: Supports 100+ simultaneous exam sessions
 - **Response Time**: < 200ms API response time
 - **Uptime**: 99.9% availability
-- **Storage**: Efficient MongoDB document storage
+- **Storage**: Efficient Supabase PostgreSQL storage
 - **Scalability**: Horizontal scaling with load balancers
 
 ## 🔒 Security Features
 
 - **Data Encryption**: All data transmission encrypted with HTTPS
-- **Secure Storage**: Violation snapshots stored in encrypted cloud storage
+- **Secure Storage**: All data and snapshots stored in Supabase with row-level security
 - **Privacy Protection**: No permanent video recording, only snapshots on violations
 - **Access Control**: Role-based access for students and administrators
 - **Session Management**: Secure session handling with automatic timeouts
