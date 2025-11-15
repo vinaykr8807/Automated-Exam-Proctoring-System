@@ -16,6 +16,7 @@ interface StudentReportData {
     name: string;
     email: string;
     student_id: string;
+    face_image_url?: string;
   };
   exam: {
     id: string;
@@ -216,7 +217,8 @@ const StudentReport = () => {
               id,
               name,
               email,
-              student_id
+              student_id,
+              face_image_url
             ),
             exam_templates (
               subject_name,
@@ -237,6 +239,7 @@ const StudentReport = () => {
             name: examData.students.name || studentData?.name || 'Unknown Student',
             email: examData.students.email || studentData?.email || '',
             student_id: examData.students.student_id || examData.students.id || studentData?.student_id || 'N/A',
+            face_image_url: examData.students.face_image_url || studentData?.face_image_url,
           };
           console.log('✅ Updated studentData from exam:', studentData);
         }
@@ -250,7 +253,8 @@ const StudentReport = () => {
             *,
             students (
               name,
-              student_id
+              student_id,
+              face_image_url
             ),
             exam_templates (
               subject_name,
@@ -434,11 +438,13 @@ const StudentReport = () => {
         name: examData.students.name || studentData.name,
         email: examData.students.email || studentData.email || '',
         student_id: examData.students.student_id || examData.students.id || studentData.student_id || 'N/A',
+        face_image_url: examData.students.face_image_url || studentData?.face_image_url,
       } : {
         id: studentData.id,
         name: studentData.name,
         email: studentData.email || '',
         student_id: studentData.student_id || studentData.id || 'N/A',
+        face_image_url: studentData?.face_image_url,
       };
       
       // Only use violation name if we don't have a proper name AND the violation matches our student/exam
@@ -474,6 +480,7 @@ const StudentReport = () => {
           name: finalStudentName,
           email: finalStudentData.email || '',
           student_id: finalStudentData.student_id || finalStudentData.id || 'N/A',
+          face_image_url: finalStudentData.face_image_url,
         },
         exam: examData ? {
           id: examData.id,
@@ -648,7 +655,8 @@ const StudentReport = () => {
         reportData.violations,
         reportData.exam.subject_name,
         reportData.exam.subject_code,
-        examScore
+        examScore,
+        reportData.student.face_image_url
       );
       
       window.open(pdfUrl, '_blank');
@@ -814,6 +822,18 @@ const StudentReport = () => {
               <CardTitle>Student Information</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
+              {reportData.student.face_image_url && (
+                <div className="mb-4">
+                  <p className="text-sm text-muted-foreground mb-2">Registration Photo</p>
+                  <div className="w-32 h-32 rounded-lg overflow-hidden border-2 border-primary">
+                    <img 
+                      src={reportData.student.face_image_url}
+                      alt="Student registration photo"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                </div>
+              )}
               <div>
                 <p className="text-sm text-muted-foreground">Name</p>
                 <p className="font-medium">{reportData.student.name}</p>
