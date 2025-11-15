@@ -52,19 +52,28 @@ const ExamAnalytics = () => {
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'violations' },
         () => {
+          console.log('Violations updated - refreshing analytics');
           loadAnalytics();
         }
       )
       .on('postgres_changes',
         { event: '*', schema: 'public', table: 'exams' },
         () => {
+          console.log('Exams updated - refreshing analytics');
+          loadAnalytics();
+        }
+      )
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'exam_answers' },
+        () => {
+          console.log('Exam answers updated - refreshing analytics');
           loadAnalytics();
         }
       )
       .subscribe();
     
-    // Auto-refresh every 5 seconds
-    const interval = setInterval(loadAnalytics, 5000);
+    // Auto-refresh every 30 seconds (reduced frequency)
+    const interval = setInterval(loadAnalytics, 30000);
     
     return () => {
       clearInterval(interval);
@@ -116,47 +125,32 @@ const ExamAnalytics = () => {
       const totalExams = examsData?.length || 0;
       const completedExams = examsData?.filter(e => e.status === 'completed').length || 0;
 
-      // Calculate scores for MCQ questions
-      const scores: number[] = [];
-      const examScores = new Map<string, { correct: number; total: number }>();
+      // Calculate scores from student attempts (use graded exam data)
+      const studentScores: number[] = [];
+      const studentAttempts = new Set<string>();
 
       examsData?.forEach(exam => {
-        if (!exam.exam_template_id) return;
-
-        const examAnswers = answersData?.filter(a => a.exam_id === exam.id) || [];
-        const examQuestions = questionsData?.filter(q => q.exam_template_id === exam.exam_template_id && q.question_type === 'mcq') || [];
-
-        if (examQuestions.length === 0) return;
-
-        let correct = 0;
-        let total = 0;
-
-        examAnswers.forEach(answer => {
-          const question = examQuestions.find(q => q.question_number === answer.question_number);
-          if (question && question.question_type === 'mcq') {
-            total++;
-            if (answer.answer?.trim() === question.correct_answer?.trim()) {
-              correct++;
-            }
+        if (exam.status === 'completed' && exam.students && exam.total_score !== null && exam.max_score !== null && exam.max_score > 0) {
+          const studentId = exam.student_id;
+          
+          // Only count each student once (their best/latest attempt)
+          if (!studentAttempts.has(studentId)) {
+            studentAttempts.add(studentId);
+            const percentage = Math.round((exam.total_score / exam.max_score) * 100);
+            studentScores.push(percentage);
           }
-        });
-
-        if (total > 0) {
-          const score = Math.round((correct / total) * 100);
-          scores.push(score);
-          examScores.set(exam.id, { correct, total });
         }
       });
 
-      const avgScore = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
+      const avgScore = studentScores.length > 0 ? Math.round(studentScores.reduce((a, b) => a + b, 0) / studentScores.length) : 0;
 
       // Score distribution
       const scoreDistribution = [
-        { range: '0-20%', count: scores.filter(s => s >= 0 && s < 20).length },
-        { range: '20-40%', count: scores.filter(s => s >= 20 && s < 40).length },
-        { range: '40-60%', count: scores.filter(s => s >= 40 && s < 60).length },
-        { range: '60-80%', count: scores.filter(s => s >= 60 && s < 80).length },
-        { range: '80-100%', count: scores.filter(s => s >= 80 && s <= 100).length },
+        { range: '0-20%', count: studentScores.filter(s => s >= 0 && s < 20).length },
+        { range: '20-40%', count: studentScores.filter(s => s >= 20 && s < 40).length },
+        { range: '40-60%', count: studentScores.filter(s => s >= 40 && s < 60).length },
+        { range: '60-80%', count: studentScores.filter(s => s >= 60 && s < 80).length },
+        { range: '80-100%', count: studentScores.filter(s => s >= 80 && s <= 100).length },
       ];
 
       // Violations by type

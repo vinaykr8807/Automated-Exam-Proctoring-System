@@ -51,10 +51,6 @@ class ProctoringService:
         self.MAX_YAW_OFFSET = 45   # Degrees - head turning left/right (more lenient - only flag significant turns)
         self.MAX_PITCH_OFFSET = 35  # Degrees - head tilting up/down (more lenient - only flag significant tilts)
         
-        # Looking away confidence thresholds (VERY STRICT to minimize false positives)
-        self.LOOKING_AWAY_CONFIDENCE_THRESHOLD = 0.90  # Must be VERY clearly looking away (increased from 0.85)
-        self.LOOKING_AWAY_SEVERITY_THRESHOLD = 0.95    # Almost certain they're looking away
-        
         # Detection confidence thresholds (optimized for real-time)
         self.OBJECT_CONFIDENCE_THRESHOLD = 0.3  # Lowered for better detection
         self.FACE_CONFIDENCE_THRESHOLD = 0.3    # Lowered for better detection
@@ -63,10 +59,9 @@ class ProctoringService:
         self.SNAPSHOT_INTERVAL_SEC = 2.0
         self.last_snapshot_time_by_session: Dict[str, float] = {}
         
-        # Eye movement tracking per session
-        # Format: {session_id: {'start_time': timestamp, 'direction': 'left'|'right'|'up'|'down', 'duration': seconds}}
-        self.eye_movement_tracking: Dict[str, Dict] = {}
-        self.EYE_MOVEMENT_THRESHOLD_SEC = 8.0  # 8 seconds of continuous eye movement
+        # Head pose tracking for sustained looking away
+        self.head_pose_tracking: Dict[str, Dict] = {}
+        self.HEAD_AWAY_DURATION_THRESHOLD_SEC = 10.0  # 10 seconds of continuously looking away
         
     def estimate_head_pose(self, landmarks, width: int, height: int) -> Optional[Tuple[float, float, float]]:
         """
@@ -108,95 +103,75 @@ class ProctoringService:
 
     def is_looking_away(self, pitch: float, yaw: float, calibrated_pitch: float, calibrated_yaw: float) -> Tuple[bool, float, Optional[str]]:
         """
-        Check if user is looking away from camera based on calibrated values
+        Check if user is looking away from camera based on calibrated values.
+        This version strictly checks for left/right head turns (yaw).
         Returns (is_looking_away, confidence_score, direction)
-        
-        Enhanced to detect head turning in any direction (left, right, up, down)
         """
-        pitch_offset = pitch - calibrated_pitch
         yaw_offset = yaw - calibrated_yaw
         
-        # Determine direction of head movement
-        direction = None
-        if abs(yaw_offset) > abs(pitch_offset):
-            if yaw_offset > 0:
-                direction = 'right'
-            else:
-                direction = 'left'
-        else:
-            if pitch_offset > 0:
-                direction = 'down'
-            else:
-                direction = 'up'
+        # Determine direction of head movement (left or right)
+        direction = 'right' if yaw_offset > 0 else 'left'
         
         # Calculate absolute offsets
-        abs_pitch_offset = abs(pitch_offset)
         abs_yaw_offset = abs(yaw_offset)
         
         # Calculate confidence score based on how far the head is turned
-        # Normalize offsets to 0-1 range
-        normalized_pitch = min(abs_pitch_offset / self.MAX_PITCH_OFFSET, 1.0)
+        # Normalize offset to 0-1 range
         normalized_yaw = min(abs_yaw_offset / self.MAX_YAW_OFFSET, 1.0)
+        confidence_score = normalized_yaw # Confidence is directly proportional to yaw turn
         
-        # Use weighted average favoring yaw (left/right is THE strongest indicator)
-        # Yaw has MUCH more weight (0.8) as looking left/right is primary indicator
-        confidence_score = (normalized_yaw * 0.8) + (normalized_pitch * 0.2)
-        
-        # Enhanced detection: Flag if head is turned significantly in any direction
-        # Threshold: 25 degrees for yaw (left/right) or 20 degrees for pitch (up/down)
-        HEAD_TURN_THRESHOLD_YAW = 25.0  # degrees
-        HEAD_TURN_THRESHOLD_PITCH = 20.0  # degrees
+        # Stricter threshold for left/right head turns to reduce sensitivity
+        HEAD_TURN_THRESHOLD_YAW = 35.0  # degrees
         
         significant_yaw_deviation = abs_yaw_offset > HEAD_TURN_THRESHOLD_YAW
-        significant_pitch_deviation = abs_pitch_offset > HEAD_TURN_THRESHOLD_PITCH
         
-        # Flag if head is turned away in any direction
-        is_looking_away = significant_yaw_deviation or significant_pitch_deviation
+        # Flag if head is turned away
+        is_looking_away = significant_yaw_deviation
         
+        # If not looking away, direction should be None
+        if not is_looking_away:
+            direction = None
+
         return is_looking_away, confidence_score, direction
     
-    def track_eye_movement(self, session_id: str, direction: str, current_time: float) -> Optional[Dict]:
+    def track_head_pose(self, session_id: str, is_looking_away: bool, direction: str, current_time: float) -> Optional[Dict]:
         """
-        Track eye movement over time. Returns violation if movement persists for 8+ seconds.
+        Track head pose over time. Returns a single violation if the user looks away continuously for a set duration.
         """
-        if session_id not in self.eye_movement_tracking:
-            # Start tracking new eye movement
-            self.eye_movement_tracking[session_id] = {
-                'start_time': current_time,
-                'direction': direction,
-                'duration': 0.0
-            }
-            return None
-        
-        tracking = self.eye_movement_tracking[session_id]
-        
-        # If direction changed, reset tracking
-        if tracking['direction'] != direction:
-            tracking['start_time'] = current_time
-            tracking['direction'] = direction
-            tracking['duration'] = 0.0
-            return None
-        
-        # Calculate duration
-        duration = current_time - tracking['start_time']
-        tracking['duration'] = duration
-        
-        # If duration exceeds threshold, flag as violation
-        if duration >= self.EYE_MOVEMENT_THRESHOLD_SEC:
-            # Reset tracking after flagging
-            self.eye_movement_tracking[session_id] = {
-                'start_time': current_time,
-                'direction': direction,
-                'duration': 0.0
-            }
+        if is_looking_away and direction:
+            if session_id not in self.head_pose_tracking:
+                # Start tracking when user starts looking away
+                self.head_pose_tracking[session_id] = {
+                    'start_time': current_time,
+                    'direction': direction,
+                    'violation_reported': False  # Flag to ensure violation is reported only once
+                }
+                return None
+
+            tracking_data = self.head_pose_tracking[session_id]
             
-            return {
-                'type': 'eye_movement',
-                'severity': 'medium',
-                'message': f'Eye movement detected for {duration:.1f} seconds (direction: {direction})',
-                'direction': direction,
-                'duration': duration
-            }
+            # If direction changes, reset start time and reported flag
+            if tracking_data['direction'] != direction:
+                tracking_data['start_time'] = current_time
+                tracking_data['direction'] = direction
+                tracking_data['violation_reported'] = False # Reset flag on direction change
+
+            duration = current_time - tracking_data['start_time']
+
+            # Trigger violation only if duration is met AND it hasn't been reported for this event yet
+            if duration >= self.HEAD_AWAY_DURATION_THRESHOLD_SEC and not tracking_data.get('violation_reported'):
+                tracking_data['violation_reported'] = True  # Mark as reported
+                return {
+                    'type': 'looking_away',
+                    'severity': 'high',
+                    'message': f'Head turned {direction} away from screen for {duration:.1f} seconds.',
+                    'duration': duration,
+                    'direction': direction
+                }
+        else:
+            # User is not looking away, so reset tracking
+            if session_id in self.head_pose_tracking:
+                del self.head_pose_tracking[session_id]
         
         return None
 
@@ -438,42 +413,18 @@ class ProctoringService:
                             'roll': float(roll)
                         }
                         
-                        # Check if looking away with confidence scoring and direction
+                        # Check if looking away
                         is_looking_away, confidence_score, direction = self.is_looking_away(pitch, yaw, calibrated_pitch, calibrated_yaw)
-                        if is_looking_away:
+                        
+                        # Track head pose for sustained violation
+                        current_time = time.time()
+                        head_pose_violation = self.track_head_pose(session_id, is_looking_away, direction, current_time)
+
+                        if head_pose_violation:
+                            result['violations'].append(head_pose_violation)
                             result['looking_away'] = True
-                            
-                            # Determine severity based on confidence score and angle
-                            if confidence_score >= self.LOOKING_AWAY_SEVERITY_THRESHOLD:
-                                severity = 'high'
-                                message = f'Head turned {direction} away from screen (confidence: {confidence_score:.2f})'
-                            else:
-                                severity = 'medium'
-                                message = f'Head turned {direction} away from screen (confidence: {confidence_score:.2f})'
-                            
-                            result['violations'].append({
-                                'type': 'looking_away',
-                                'severity': severity,
-                                'message': message,
-                                'confidence': confidence_score,
-                                'direction': direction
-                            })
-                            
-                            # Display confidence on frame
-                            cv2.putText(frame, f"HEAD TURNED {direction.upper()}! ({confidence_score:.2f})", (50, 150), 
+                            cv2.putText(frame, f"HEAD TURNED AWAY! ({head_pose_violation['duration']:.1f}s)", (50, 150), 
                                       cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
-                            
-                            # Track eye movement for 8-second violation
-                            current_time = time.time()
-                            eye_movement_violation = self.track_eye_movement(session_id, direction, current_time)
-                            if eye_movement_violation:
-                                result['violations'].append(eye_movement_violation)
-                                cv2.putText(frame, f"EYE MOVEMENT: {direction.upper()} ({eye_movement_violation['duration']:.1f}s)", (50, 200),
-                                          cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 0, 0), 2)
-                        else:
-                            # Reset eye movement tracking if head is back to normal
-                            if session_id in self.eye_movement_tracking:
-                                del self.eye_movement_tracking[session_id]
             
             # Detect prohibited objects
             object_detection = self.detect_prohibited_objects(frame)

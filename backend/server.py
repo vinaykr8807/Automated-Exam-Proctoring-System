@@ -12,7 +12,8 @@ from datetime import datetime
 import asyncio
 import logging
 import json
-from supabase import create_client, Client
+from supabase._sync.client import create_client
+from supabase._sync.client import SyncClient as Client
 import os
 from dotenv import load_dotenv
 from pathlib import Path
@@ -470,6 +471,7 @@ async def websocket_proctoring(websocket: WebSocket, session_id: str):
             elif message['type'] == 'audio':
                 # Process audio level
                 audio_level = message.get('audio_level', 0)
+                logger.info(f"🎤 Received audio level: {audio_level}%")
                 # Always echo current audio level so UI can update in real-time
                 await websocket.send_json({
                     'type': 'audio_level',
@@ -480,7 +482,7 @@ async def websocket_proctoring(websocket: WebSocket, session_id: str):
                 })
                 # Record a violation if audio exceeds threshold (adjusted to be more sensitive)
                 try:
-                    AUDIO_THRESHOLD = 50  # 50% threshold for excessive noise (increased to reduce false positives)
+                    AUDIO_THRESHOLD = 30  # Lowered threshold for excessive noise to improve sensitivity
                     if audio_level >= AUDIO_THRESHOLD:
                         # Check cooldown for audio violations
                         now_ts = asyncio.get_event_loop().time()
@@ -514,10 +516,10 @@ async def websocket_proctoring(websocket: WebSocket, session_id: str):
                                     logger.warning(f"Could not lookup student name: {lookup_err}")
                             
                             # Determine severity based on audio level
-                            if audio_level >= 70:
+                            if audio_level >= 60:
                                 severity = "high"
                                 severity_msg = "Very loud background noise"
-                            elif audio_level >= 55:
+                            elif audio_level >= 45:
                                 severity = "medium"
                                 severity_msg = "Loud background noise"
                             else:
@@ -528,8 +530,8 @@ async def websocket_proctoring(websocket: WebSocket, session_id: str):
                             
                             violation_record = {
                                 "id": str(uuid.uuid4()),
-                                "exam_id": validate_uuid(exam_id),
-                                "student_id": validate_uuid(student_id),
+                                "exam_id": validate_uuid(exam_id) or exam_id,
+                                "student_id": validate_uuid(student_id) or student_id,
                                 "violation_type": "excessive_noise",
                                 "severity": severity,
                                 "details": {
@@ -584,8 +586,8 @@ async def websocket_proctoring(websocket: WebSocket, session_id: str):
                         # Save browser activity violation to database (NO snapshot for browser activity)
                         violation_record = {
                             "id": str(uuid.uuid4()),
-                            "exam_id": validate_uuid(exam_id),
-                            "student_id": validate_uuid(student_id),
+                            "exam_id": validate_uuid(exam_id) or exam_id,
+                            "student_id": validate_uuid(student_id) or student_id,
                             "violation_type": violation_type,
                             "severity": "medium",
                             "details": {
@@ -673,9 +675,9 @@ async def create_violation(violation_data: dict):
         # Insert violation into Supabase
         violation_record = {
             "id": str(uuid.uuid4()),
-            "exam_id": violation_data.get("exam_id"),
-            "student_id": violation_data.get("student_id"),
-            "violation_type": violation_data.get("violation_type"),
+            "exam_id": violation_data.get("exam_id") or "unknown",
+            "student_id": violation_data.get("student_id") or "unknown",
+            "violation_type": violation_data.get("violation_type") or "unknown",
             "severity": violation_data.get("severity", "medium"),
             "details": violation_data.get("details", {}),
             "image_url": violation_data.get("image_url"),
