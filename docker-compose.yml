@@ -1,0 +1,30 @@
+services:
+  exameye-shield:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        # Frontend build-time environment variables
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL:-https://ukwnvvuqmiqrjlghgxnf.supabase.co}
+        VITE_SUPABASE_PUBLISHABLE_KEY: ${VITE_SUPABASE_PUBLISHABLE_KEY}
+        VITE_PROCTORING_API_URL: ${VITE_PROCTORING_API_URL:-http://localhost:8001}
+        VITE_PROCTORING_WS_URL: ${VITE_PROCTORING_WS_URL:-ws://localhost:8001}
+    container_name: exameye-shield
+    ports:
+      - "80:80"
+    environment:
+      # Backend Runtime Environment Variables
+      - SUPABASE_URL=${SUPABASE_URL:-https://ukwnvvuqmiqrjlghgxnf.supabase.co}
+      - SUPABASE_KEY=${SUPABASE_KEY}
+      - PORT=8001
+    volumes:
+      # Optional: Mount backend models to avoid re-downloading
+      - ./backend/models:/app/backend/models
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
